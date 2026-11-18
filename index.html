@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Automate with Morya</title>
+<meta name="description" content="Custom Google Sheets apps and workflow automation for factories and businesses in Ludhiana. Stock, purchase orders, production tracking and follow-ups.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: a factory register turned into a live spreadsheet. Faint sheet grid as paper, cell references as the visual language, one green accent for "automated". */
+:root{
+  --paper:#F5F7F3;
+  --card:#FFFFFF;
+  --ink:#12201A;
+  --ink-soft:#4B5A53;
+  --line:#D8DED6;
+  --accent:#1E7A4C;
+  --accent-soft:#E3F1E8;
+  --warn:#C9791A;
+  --warn-soft:#FBEEDC;
+  --font-display:"Archivo","Arial Narrow",Arial,sans-serif;
+  --font-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:var(--font-body);font-size:17px;line-height:1.6;
+  background-image:
+    linear-gradient(var(--line) 1px,transparent 1px),
+    linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:100% 32px,96px 100%;
+  background-position:0 0,0 0;
+  background-attachment:local;
+}
+body::before{content:"";position:fixed;inset:0;background:color-mix(in srgb,var(--paper) 72%,transparent);pointer-events:none;z-index:-1}
+a{color:inherit}
+img,svg{max-width:100%}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:4px}
+.wrap{max-width:1140px;margin:0 auto;padding:0 20px}
+h1,h2,h3{font-family:var(--font-display);text-wrap:balance;margin:0;line-height:1.02}
+h2{font-size:clamp(2rem,5vw,3.2rem);font-stretch:75%;font-weight:850;letter-spacing:-.01em;text-transform:uppercase}
+h3{font-size:1.25rem;font-weight:700;font-stretch:90%;line-height:1.2}
+p{margin:0}
+.mono{font-family:var(--font-mono)}
+.ref{font-family:var(--font-mono);font-size:.78rem;color:var(--accent);background:var(--accent-soft);padding:2px 8px;border-radius:4px;letter-spacing:.02em}
+
+/* Header */
+header{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--paper) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.nav{display:flex;align-items:center;justify-content:space-between;gap:16px;height:68px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.brand svg{width:38px;height:38px;flex:none}
+.wordmark{font-family:var(--font-display);font-weight:800;font-stretch:80%;font-size:1.15rem;text-transform:uppercase;letter-spacing:.01em;line-height:1}
+.wordmark i{font-style:normal;font-family:var(--font-mono);font-weight:400;font-size:.8em;text-transform:lowercase;color:var(--accent);margin:0 .15em}
+.links{display:flex;gap:24px;align-items:center}
+.links a{text-decoration:none;font-weight:500;font-size:.95rem;color:var(--ink-soft)}
+.links a:hover{color:var(--ink)}
+.btn{display:inline-flex;align-items:center;gap:8px;text-decoration:none;font-weight:600;border-radius:8px;padding:12px 20px;border:2px solid var(--ink);transition:transform .15s ease,box-shadow .15s ease;font-size:1rem;cursor:pointer;font-family:var(--font-body)}
+.btn:hover{transform:translate(-2px,-2px);box-shadow:4px 4px 0 var(--ink)}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--ink)}
+.btn-ghost{background:var(--card);color:var(--ink)}
+.btn-sm{padding:8px 14px;font-size:.9rem}
+.btn svg{width:18px;height:18px}
+@media (max-width:760px){.links a:not(.btn){display:none}}
+@media (max-width:600px){.links{display:none}}
+.links a.btn{color:#fff}
+.hero>*{min-width:0}
+
+/* Hero */
+.hero{padding:64px 0 72px;display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}
+.hero h1{font-size:clamp(3.2rem,9vw,6.4rem);font-weight:900;font-stretch:68%;text-transform:uppercase;letter-spacing:-.015em;line-height:.9}
+.hero h1 .hl{color:var(--accent);display:block}
+.hero .lede{margin-top:24px;font-size:1.2rem;color:var(--ink-soft);max-width:34ch}
+.hero .lede strong{color:var(--ink);font-weight:600}
+.cta-row{display:flex;flex-wrap:wrap;gap:12px;margin-top:32px}
+.trust{margin-top:28px;display:flex;flex-wrap:wrap;gap:8px 20px;font-size:.92rem;color:var(--ink-soft)}
+.trust span::before{content:"✓";color:var(--accent);font-weight:700;margin-right:6px}
+
+/* Live sheet demo */
+.sheet{background:var(--card);border:2px solid var(--ink);border-radius:12px;box-shadow:8px 8px 0 var(--ink);overflow:hidden;font-size:.86rem}
+.sheet-top{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);background:#FAFBF9}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--line)}
+.sheet-title{margin-left:6px;font-weight:600;font-size:.85rem}
+.fx{display:flex;gap:10px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--line);font-family:var(--font-mono);font-size:.8rem;color:var(--ink-soft)}
+.fx b{color:var(--accent);font-weight:500;font-style:italic}
+.grid-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:9px 8px;text-align:left;white-space:nowrap}
+th{font-family:var(--font-mono);font-weight:500;font-size:.72rem;color:var(--ink-soft);background:#F3F5F1}
+th.col{text-align:center}
+td.num{text-align:right;font-family:var(--font-mono)}
+td.rn,th.rn{width:32px;text-align:center;color:var(--ink-soft);font-family:var(--font-mono);font-size:.72rem;background:#F3F5F1}
+.chip{display:inline-block;font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:99px}
+.chip.ok{background:var(--accent-soft);color:var(--accent)}
+.chip.low{background:var(--warn-soft);color:var(--warn)}
+tr.changed td{animation:flash 1.6s ease 1.2s 1 both}
+@keyframes flash{0%{background:transparent}30%{background:var(--warn-soft)}100%{background:transparent}}
+.toast{display:flex;gap:10px;align-items:flex-start;margin:12px;padding:10px 12px;border-radius:8px;background:#E7F6EC;border:1px solid #BFE3CB;font-size:.82rem;animation:rise .5s ease 2.2s both}
+.toast svg{width:18px;height:18px;flex:none;margin-top:2px;color:#1C9B53}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){tr.changed td,.toast{animation:none}.btn{transition:none}html{scroll-behavior:auto}}
+
+/* Sections */
+section{padding:72px 0;border-top:2px solid var(--ink)}
+.sec-head{display:flex;flex-direction:column;align-items:flex-start;gap:14px;margin-bottom:40px;max-width:720px}
+.sec-head p{color:var(--ink-soft);font-size:1.08rem;max-width:60ch}
+
+/* Problems */
+.pains{display:grid;grid-template-columns:repeat(2,1fr);gap:0;border:2px solid var(--ink);border-radius:12px;overflow:hidden;background:var(--card)}
+.pain{padding:26px 28px;border-bottom:1px solid var(--line);display:grid;gap:10px}
+.pain:nth-child(odd){border-right:1px solid var(--line)}
+.pain:nth-last-child(-n+2){border-bottom:0}
+.pain .q{font-family:var(--font-display);font-stretch:85%;font-weight:700;font-size:1.3rem;line-height:1.2}
+.pain .a{color:var(--ink-soft);font-size:.98rem}
+.pain .a b{color:var(--accent);font-weight:600}
+
+/* Work */
+.work{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px;display:flex;flex-direction:column;gap:12px;transition:border-color .15s ease,transform .15s ease}
+.card:hover{border-color:var(--ink);transform:translateY(-3px)}
+.card .tag{align-self:flex-start}
+.card p{color:var(--ink-soft);font-size:.96rem}
+.card ul{margin:0;padding:0;list-style:none;display:grid;gap:6px;font-size:.92rem}
+.card li{padding-left:18px;position:relative}
+.card li::before{content:"";position:absolute;left:0;top:.62em;width:8px;height:8px;border-radius:2px;background:var(--accent)}
+.work-note{margin-top:24px;font-size:.92rem;color:var(--ink-soft)}
+
+/* Steps */
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:0;counter-reset:s}
+.step{padding:24px 22px 0 0;border-top:3px solid var(--ink);margin-right:20px;display:grid;gap:10px;align-content:start}
+.step .n{font-family:var(--font-display);font-weight:900;font-stretch:65%;font-size:3.2rem;line-height:1;color:var(--accent)}
+.step p{color:var(--ink-soft);font-size:.96rem}
+
+/* Why */
+.why{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+.why div{display:grid;gap:8px}
+.why b{font-family:var(--font-display);font-stretch:85%;font-size:1.15rem}
+.why span{color:var(--ink-soft);font-size:.95rem}
+
+/* Contact */
+.contact{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start}
+.contact .big{font-family:var(--font-display);font-weight:900;font-stretch:68%;text-transform:uppercase;font-size:clamp(2.6rem,7vw,4.8rem);line-height:.92}
+.contact .big span{color:var(--accent)}
+.lines{margin-top:24px;display:grid;gap:10px;font-size:1.02rem}
+.lines div{display:flex;gap:12px}
+.lines .k{font-family:var(--font-mono);font-size:.8rem;color:var(--ink-soft);width:84px;padding-top:3px}
+form{background:var(--card);border:2px solid var(--ink);border-radius:12px;padding:24px;display:grid;gap:14px;box-shadow:8px 8px 0 var(--ink)}
+label{display:grid;gap:6px;font-weight:500;font-size:.92rem}
+input,select,textarea{font:inherit;font-size:1rem;padding:11px 12px;border:1px solid #BFC7BE;border-radius:8px;background:#FBFCFA;color:var(--ink);width:100%}
+textarea{min-height:96px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
+.form-note{font-size:.82rem;color:var(--ink-soft)}
+.form-error{font-size:.88rem;color:#A33B1A;min-height:1.2em}
+
+footer{border-top:2px solid var(--ink);padding:28px 0 40px;font-size:.9rem;color:var(--ink-soft)}
+.foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:center}
+
+/* Floating WhatsApp */
+.wa-float{position:fixed;right:18px;bottom:18px;z-index:20;width:56px;height:56px;border-radius:50%;background:#25D366;display:grid;place-items:center;border:2px solid var(--ink);box-shadow:3px 3px 0 var(--ink);text-decoration:none}
+.wa-float svg{width:28px;height:28px;color:#fff}
+
+@media (max-width:960px){
+  .hero{grid-template-columns:1fr;padding-top:40px}
+  .work{grid-template-columns:1fr 1fr}
+  .steps{grid-template-columns:1fr 1fr;row-gap:32px}
+  .why{grid-template-columns:1fr 1fr}
+  .contact{grid-template-columns:1fr}
+}
+@media (max-width:600px){
+  body{font-size:16px}
+  .pains{grid-template-columns:1fr}
+  .pain:nth-child(odd){border-right:0}
+  .pain:nth-last-child(2){border-bottom:1px solid var(--line)}
+  .work,.why{grid-template-columns:1fr}
+  .steps{grid-template-columns:1fr}
+  .step{margin-right:0}
+  section{padding:56px 0}
+  .sheet{box-shadow:5px 5px 0 var(--ink)}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="logo" viewBox="0 0 48 48">
+      <rect x="1.5" y="1.5" width="45" height="45" rx="10" fill="#12201A"/>
+      <g stroke="#2E4038" stroke-width="1">
+        <line x1="16.5" y1="4" x2="16.5" y2="44"/><line x1="31.5" y1="4" x2="31.5" y2="44"/>
+        <line x1="4" y1="16.5" x2="44" y2="16.5"/><line x1="4" y1="31.5" x2="44" y2="31.5"/>
+      </g>
+      <polyline points="9,39 9,9 24,24 39,9 39,36" fill="none" stroke="#3FBF7A" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <polyline points="34.5,32 39,37.5 43.5,32" fill="none" stroke="#3FBF7A" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="9" cy="39" r="3" fill="#fff"/><circle cx="9" cy="9" r="2.4" fill="#fff"/><circle cx="24" cy="24" r="2.4" fill="#fff"/><circle cx="39" cy="9" r="2.4" fill="#fff"/>
+    </symbol>
+    <symbol id="wa" viewBox="0 0 24 24"><path fill="currentColor" d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91A9.85 9.85 0 0 0 12.04 2Zm5.8 14.09c-.24.68-1.42 1.31-1.95 1.36-.5.05-.97.23-3.27-.68-2.77-1.09-4.52-3.92-4.66-4.1-.13-.18-1.11-1.48-1.11-2.82 0-1.34.7-2 .95-2.27.25-.27.54-.34.72-.34h.52c.17 0 .39-.06.61.47.24.56.79 1.93.86 2.07.07.14.11.3.02.48-.09.18-.14.3-.27.46-.14.16-.29.36-.41.48-.14.14-.28.28-.12.56.16.27.71 1.17 1.52 1.89 1.04.93 1.92 1.22 2.2 1.36.27.14.43.11.59-.07.16-.18.68-.79.86-1.07.18-.27.36-.23.61-.14.25.09 1.59.75 1.86.89.27.14.45.2.52.32.07.11.07.66-.17 1.33Z"/></symbol>
+  </defs>
+</svg>
+
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="#top" aria-label="Automate with Morya, home">
+      <svg aria-hidden="true"><use href="#logo"/></svg>
+      <span class="wordmark">Automate<i>with</i>Morya</span>
+    </a>
+    <nav class="links" aria-label="Main">
+      <a href="#work">My work</a>
+      <a href="#process">How it works</a>
+      <a href="#contact">Contact</a>
+      <a class="btn btn-primary btn-sm js-wa" href="#contact"><svg aria-hidden="true"><use href="#wa"/></svg>WhatsApp</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <div class="wrap hero">
+    <div>
+      <h1>Automate your <span class="hl">workload.</span></h1>
+      <p class="lede">I build <strong>custom Google Sheets apps</strong> for factories and businesses: stock, purchase orders, production tracking and follow-ups. <strong>No costly software. Works on your phone.</strong></p>
+      <div class="cta-row">
+        <a class="btn btn-primary js-wa" href="#contact"><svg aria-hidden="true"><use href="#wa"/></svg>Get a free demo</a>
+        <a class="btn btn-ghost" href="#work">See my work</a>
+      </div>
+      <div class="trust">
+        <span>Systems running daily in a Ludhiana factory</span>
+        <span>Your data stays in your Google account</span>
+        <span>Ludhiana based</span>
+      </div>
+    </div>
+
+    <div class="sheet" role="img" aria-label="Example: a stock sheet that updates balances automatically and sends a WhatsApp alert when an item runs low">
+      <div class="sheet-top"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="sheet-title">Store Stock · Live</span></div>
+      <div class="fx"><span>E3</span><span>fx</span><b>= IN − OUT · updates on every entry</b></div>
+      <div class="grid-wrap">
+        <table>
+          <thead>
+            <tr><th class="rn"></th><th class="col">A · Item</th><th class="col">B · In</th><th class="col">C · Out</th><th class="col">D · Balance</th><th class="col">E · Status</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="rn">2</td><td>MS Plate 10 mm</td><td class="num">120</td><td class="num">46</td><td class="num">74</td><td><span class="chip ok">OK</span></td></tr>
+            <tr class="changed"><td class="rn">3</td><td>Bearing 6205</td><td class="num">60</td><td class="num">52</td><td class="num">8</td><td><span class="chip low">Reorder</span></td></tr>
+            <tr><td class="rn">4</td><td>Contactor 32 A</td><td class="num">40</td><td class="num">12</td><td class="num">28</td><td><span class="chip ok">OK</span></td></tr>
+            <tr><td class="rn">5</td><td>Wheel Ø 400</td><td class="num">16</td><td class="num">6</td><td class="num">10</td><td><span class="chip ok">OK</span></td></tr>
+            <tr><td class="rn">6</td><td>Cable 4C × 6 mm²</td><td class="num">500 m</td><td class="num">180 m</td><td class="num">320 m</td><td><span class="chip ok">OK</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="toast"><svg aria-hidden="true"><use href="#wa"/></svg><span><b>WhatsApp alert sent to Store Manager:</b> Bearing 6205 is below reorder level (8 left).</span></div>
+    </div>
+  </div>
+
+  <section id="problems">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="ref">Sound familiar?</span>
+        <h2>Problems I fix every day</h2>
+      </div>
+      <div class="pains">
+        <div class="pain"><p class="q">“Stock in the register never matches the store.”</p><p class="a"><b>Fix:</b> every IN and OUT entry updates the balance live, with low-stock alerts.</p></div>
+        <div class="pain"><p class="q">“What’s the status of that material?” asked ten times a day.</p><p class="a"><b>Fix:</b> PO, GRN and pending material in one screen anyone can open on their phone.</p></div>
+        <div class="pain"><p class="q">POs and reports typed by hand, again and again.</p><p class="a"><b>Fix:</b> fill a form once and the PO PDF, records and follow-ups are created for you.</p></div>
+        <div class="pain"><p class="q">Production delays found out only at dispatch.</p><p class="a"><b>Fix:</b> planned vs actual tracking for every step, so you see the delay the day it starts.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="work">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="ref">My work</span>
+        <h2>Systems I have built</h2>
+        <p>Each one is a real app on Google Sheets, running daily in a crane manufacturing company. I can build the same for your business, set up for how you work.</p>
+      </div>
+      <div class="work">
+        <article class="card">
+          <span class="ref tag">Store</span>
+          <h3>Inventory &amp; Store System</h3>
+          <p>Mobile entry form for inward, outward and returns.</p>
+          <ul><li>Live stock balance</li><li>Month-wise reports</li><li>Low-stock alerts</li></ul>
+        </article>
+        <article class="card">
+          <span class="ref tag">Purchase</span>
+          <h3>Purchase Order System</h3>
+          <p>Create, approve and track POs from one web app.</p>
+          <ul><li>Auto PO PDF</li><li>GRN and pending material</li><li>Vendor master</li></ul>
+        </article>
+        <article class="card">
+          <span class="ref tag">Production</span>
+          <h3>Production Tracker</h3>
+          <p>Planned vs actual for every step of a work order.</p>
+          <ul><li>One-tap “Mark work done”</li><li>Delay tracking</li><li>Looker Studio dashboard</li></ul>
+        </article>
+        <article class="card">
+          <span class="ref tag">Engineering</span>
+          <h3>Electrical Indent System</h3>
+          <p>Pick motor HP and crane type, get the full material list.</p>
+          <ul><li>Auto calculations from BOM</li><li>Print-ready indent</li><li>Indent records</li></ul>
+        </article>
+        <article class="card">
+          <span class="ref tag">Office</span>
+          <h3>Daily Follow-up Tracker</h3>
+          <p>Every task with an owner, a date and a status.</p>
+          <ul><li>Auto-moves completed work</li><li>Works on mobile</li><li>Daily summary</li></ul>
+        </article>
+        <article class="card">
+          <span class="ref tag">Alerts</span>
+          <h3>WhatsApp Notifications</h3>
+          <p>Your sheet messages the right person at the right time.</p>
+          <ul><li>Approval requests</li><li>Pending reminders</li><li>Status updates</li></ul>
+        </article>
+      </div>
+      <p class="work-note">Screenshots and demos use sample data. Client data is never shared.</p>
+    </div>
+  </section>
+
+  <section id="process">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="ref">How it works</span>
+        <h2>From register to app in four steps</h2>
+      </div>
+      <div class="steps">
+        <div class="step"><span class="n">01</span><h3>Free 15-minute call</h3><p>Tell me what takes your team the most time.</p></div>
+        <div class="step"><span class="n">02</span><h3>I study your process</h3><p>Send your current Excel, register or WhatsApp flow.</p></div>
+        <div class="step"><span class="n">03</span><h3>Demo on your data</h3><p>See it working before you pay the full amount.</p></div>
+        <div class="step"><span class="n">04</span><h3>Go live with support</h3><p>Team training, fixes and changes as you grow.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="why">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="ref">Why Google Sheets</span>
+        <h2>Software that fits your business</h2>
+      </div>
+      <div class="why">
+        <div><b>No monthly fees</b><span>Runs on the free Google account you already have.</span></div>
+        <div><b>Works on any phone</b><span>Store, floor and office use the same app.</span></div>
+        <div><b>Your data, your control</b><span>Everything stays in your own Google Drive.</span></div>
+        <div><b>Easy to change</b><span>New column, new report, new step: done fast.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="contact">
+    <div class="wrap contact">
+      <div>
+        <p class="big">Stop doing it <span>by hand.</span></p>
+        <p style="margin-top:18px;color:var(--ink-soft);max-width:42ch">Message me on WhatsApp with what you want to automate. I usually reply the same day.</p>
+        <div class="lines">
+          <div><span class="k">WhatsApp</span><span class="js-phone">+91 XXXXX XXXXX</span></div>
+          <div><span class="k">Email</span><span class="js-email">your@email.com</span></div>
+          <div><span class="k">Location</span><span>Ludhiana, Punjab</span></div>
+        </div>
+      </div>
+      <form id="lead" novalidate>
+        <label for="f-name">Your name<input id="f-name" name="name" autocomplete="name" placeholder="e.g. Harpreet Singh"></label>
+        <label for="f-biz">Business name<input id="f-biz" name="biz" placeholder="e.g. Singh Engineering Works"></label>
+        <label for="f-need">What do you want to automate?
+          <select id="f-need" name="need">
+            <option>Stock / inventory</option>
+            <option>Purchase orders</option>
+            <option>Production tracking</option>
+            <option>Daily follow-ups</option>
+            <option>Billing / reports</option>
+            <option>Something else</option>
+          </select>
+        </label>
+        <label for="f-msg">Tell me a little more<textarea id="f-msg" name="msg" placeholder="e.g. We keep stock in a register and it never matches."></textarea></label>
+        <p class="form-error" id="f-err" role="alert"></p>
+        <a class="btn btn-primary" id="f-send" href="#contact"><svg aria-hidden="true"><use href="#wa"/></svg>Send on WhatsApp</a>
+        <p class="form-note">This opens WhatsApp with your message ready to send.</p>
+      </form>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <a class="brand" href="#top" aria-label="Back to top">
+      <svg aria-hidden="true" style="width:30px;height:30px"><use href="#logo"/></svg>
+      <span class="wordmark">Automate<i>with</i>Morya</span>
+    </a>
+    <span>Automate your workload. · Ludhiana, Punjab</span>
+  </div>
+</footer>
+
+<a class="wa-float js-wa" href="#contact" aria-label="Chat on WhatsApp"><svg aria-hidden="true"><use href="#wa"/></svg></a>
+
+<script>
+/* ===== EDIT THESE THREE LINES ===== */
+const WHATSAPP_NUMBER = "";            // e.g. "919876543210" (country code + number, no + or spaces)
+const PHONE_DISPLAY   = "+91 XXXXX XXXXX";
+const EMAIL           = "your@email.com";
+/* ================================== */
+
+const hello = "Hi Morya, I saw your website. I want to automate my work.";
+const waLink = t => WHATSAPP_NUMBER ? "https://wa.me/" + WHATSAPP_NUMBER + "?text=" + encodeURIComponent(t) : "#contact";
+
+document.querySelectorAll(".js-wa").forEach(a => { a.href = waLink(hello); if (WHATSAPP_NUMBER) a.target = "_blank"; a.rel = "noopener"; });
+document.querySelectorAll(".js-phone").forEach(e => e.textContent = PHONE_DISPLAY);
+document.querySelectorAll(".js-email").forEach(e => e.textContent = EMAIL);
+
+const f = document.getElementById("lead"), send = document.getElementById("f-send"), err = document.getElementById("f-err");
+function buildMsg(){
+  const v = id => document.getElementById(id).value.trim();
+  let m = "Hi Morya, I saw your website.";
+  if (v("f-name")) m += "\nName: " + v("f-name");
+  if (v("f-biz")) m += "\nBusiness: " + v("f-biz");
+  m += "\nWant to automate: " + v("f-need");
+  if (v("f-msg")) m += "\nDetails: " + v("f-msg");
+  return m;
+}
+function refresh(){ send.href = waLink(buildMsg()); if (WHATSAPP_NUMBER){ send.target = "_blank"; send.rel = "noopener"; } }
+f.addEventListener("input", refresh); f.addEventListener("change", refresh); refresh();
+send.addEventListener("click", e => {
+  if (!WHATSAPP_NUMBER){ e.preventDefault(); err.textContent = "WhatsApp number not set yet. Add it at the top of the script."; return; }
+  if (!document.getElementById("f-name").value.trim()){ e.preventDefault(); err.textContent = "Please enter your name so I know who is messaging."; document.getElementById("f-name").focus(); return; }
+  err.textContent = "";
+});
+f.addEventListener("submit", e => e.preventDefault());
+</script>
+</body>
+</html>
